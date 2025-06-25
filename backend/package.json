@@ -16,7 +16,8 @@
   "cors": "^2.x.x",
   "dotenv": "^16.x.x",
   "razorpay": "^2.x.x",
-  "nodemailer": "^6.x.x"
+  "nodemailer": "^6.x.x",
+   "pdfkit": "^0.17.1"
 }
 
 
