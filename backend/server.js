@@ -11,7 +11,6 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-// Fix __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -31,42 +30,14 @@ const COURSE_PRICES = {
   'Cloud Architect': 1500,
 };
 
-// === Send Email with PDF Receipt ===
+// === STEP 1: Handle application before payment ===
 app.post('/api/apply', async (req, res) => {
   const { name, email, contact, whatsapp, gender, education, course, message } = req.body;
 
   const amount = COURSE_PRICES[course];
   if (!amount) return res.status(400).json({ message: 'Invalid course selected' });
 
-  // Ensure temp folder exists
-  const tempDir = path.join(__dirname, 'temp');
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir);
-  }
-
-  const receiptPath = path.join(tempDir, `receipt_${Date.now()}.pdf`);
-  const doc = new PDFDocument();
-  const writeStream = fs.createWriteStream(receiptPath);
-  doc.pipe(writeStream);
-
-  // PDF Content
-  doc.fontSize(20).text('Course Application Receipt', { align: 'center' });
-  doc.moveDown();
-  doc.fontSize(12).text(`Thank you for applying to the course: ${course}`);
-  doc.moveDown();
-  doc.text(`Name: ${name}`);
-  doc.text(`Email: ${email}`);
-  doc.text(`Contact: ${contact}`);
-  doc.text(`WhatsApp: ${whatsapp}`);
-  doc.text(`Gender: ${gender}`);
-  doc.text(`Education: ${education}`);
-  doc.text(`Course: ${course}`);
-  doc.text(`Amount Paid: ₹${amount}`);
-  doc.text(`Message: ${message}`);
-  doc.text(`Date: ${new Date().toLocaleString()}`);
-  doc.end();
-
-  writeStream.on('finish', async () => {
+  try {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -75,11 +46,10 @@ app.post('/api/apply', async (req, res) => {
       },
     });
 
-    // Admin email
-    const adminMailOptions = {
+    const mailOptions = {
       from: process.env.EMAIL_USER,
       to: 'sathish2222k0150@gmail.com',
-      subject: 'New Course Application',
+      subject: 'New Course Application (Before Payment)',
       html: `
         <h2>New Application Submitted</h2>
         <p><strong>Name:</strong> ${name}</p>
@@ -94,59 +64,24 @@ app.post('/api/apply', async (req, res) => {
       `,
     };
 
-    // User email with receipt
-    const userMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Thank You for Your Application',
-      html: `
-        <h2>Thank you for your application!</h2>
-        <p>We have received your application for <strong>${course}</strong>.</p>
-        <p>Our team will contact you shortly with more details.</p>
-        <h3>Application Details:</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Contact:</strong> ${contact}</p>
-        <p><strong>Course:</strong> ${course}</p>
-        <p><strong>Amount:</strong> ₹${amount}</p>
-      `,
-      attachments: [
-        {
-          filename: 'Course_Receipt.pdf',
-          path: receiptPath,
-        },
-      ],
-    };
-
-    try {
-      await transporter.sendMail(adminMailOptions);
-      await transporter.sendMail(userMailOptions);
-
-      fs.unlinkSync(receiptPath); // delete the temp file
-
-      res.status(200).json({ message: 'Emails sent with receipt' });
-    } catch (err) {
-      console.error('Email error:', err);
-      res.status(500).json({ message: 'Failed to send emails' });
-    }
-  });
-
-  writeStream.on('error', (err) => {
-    console.error('PDF write error:', err);
-    res.status(500).json({ message: 'Failed to generate receipt' });
-  });
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: 'Application received. Awaiting payment.' });
+  } catch (err) {
+    console.error('Email send error:', err);
+    res.status(500).json({ message: 'Failed to send application email' });
+  }
 });
 
-// === Razorpay Order Creation ===
+// === STEP 2: Razorpay order creation ===
 app.post('/api/create-order', async (req, res) => {
   const { course } = req.body;
-
   const amount = COURSE_PRICES[course];
+
   if (!amount) return res.status(400).json({ error: 'Invalid course selected' });
 
   try {
     const order = await razorpay.orders.create({
-      amount: amount * 100, // in paisa
+      amount: amount * 100,
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
     });
@@ -155,15 +90,139 @@ app.post('/api/create-order', async (req, res) => {
       id: order.id,
       amount: order.amount,
       currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID, // send only public key
+      key: process.env.RAZORPAY_KEY_ID,
     });
-  } catch (err) {
-    console.error('Order creation error:', err);
+  } catch (error) {
+    console.error('Order creation error:', error);
     res.status(500).json({ error: 'Failed to create Razorpay order' });
   }
 });
 
-// === Start Server ===
+// === STEP 3: After successful payment, verify and send PDF receipt ===
+app.post('/api/verify-payment', async (req, res) => {
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    applicationData,
+  } = req.body;
+
+  const generatedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+
+  if (generatedSignature !== razorpay_signature) {
+    return res.status(400).json({ error: 'Invalid payment signature' });
+  }
+
+  const {
+    name,
+    email,
+    contact,
+    whatsapp,
+    gender,
+    education,
+    course,
+    message,
+  } = applicationData;
+
+  const amount = COURSE_PRICES[course];
+  if (!amount) return res.status(400).json({ error: 'Invalid course in application data' });
+
+  const tempDir = path.join(__dirname, 'temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+
+  const receiptPath = path.join(tempDir, `receipt_${Date.now()}.pdf`);
+  const doc = new PDFDocument();
+  const writeStream = fs.createWriteStream(receiptPath);
+  doc.pipe(writeStream);
+
+  doc.fontSize(20).text('Course Application Receipt', { align: 'center' });
+  doc.moveDown();
+  doc.fontSize(12).text(`Thank you for applying to the course: ${course}`);
+  doc.moveDown();
+  doc.text(`Name: ${name}`);
+  doc.text(`Email: ${email}`);
+  doc.text(`Contact: ${contact}`);
+  doc.text(`WhatsApp: ${whatsapp}`);
+  doc.text(`Gender: ${gender}`);
+  doc.text(`Education: ${education}`);
+  doc.text(`Course: ${course}`);
+  doc.text(`Amount Paid: ₹${amount}`);
+  doc.text(`Message: ${message}`);
+  doc.text(`Payment ID: ${razorpay_payment_id}`);
+  doc.text(`Date: ${new Date().toLocaleString()}`);
+  doc.end();
+
+  writeStream.on('finish', async () => {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      // Email to user
+      const userMailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Course Receipt - Payment Successful',
+        html: `
+          <h2>Thank you for your payment!</h2>
+          <p>You have successfully registered for <strong>${course}</strong>.</p>
+          <h3>Payment ID:</h3>
+          <p>${razorpay_payment_id}</p>
+        `,
+        attachments: [
+          {
+            filename: 'Course_Receipt.pdf',
+            path: receiptPath,
+          },
+        ],
+      };
+
+      // Email to admin
+      const adminMailOptions = {
+        from: process.env.EMAIL_USER,
+        to: 'sathish2222k0150@gmail.com',
+        subject: 'New Payment Received',
+        html: `
+          <h2>Payment Received for Application</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Course:</strong> ${course}</p>
+          <p><strong>Amount:</strong> ₹${amount}</p>
+          <p><strong>Payment ID:</strong> ${razorpay_payment_id}</p>
+        `,
+        attachments: [
+          {
+            filename: 'Course_Receipt.pdf',
+            path: receiptPath,
+          },
+        ],
+      };
+
+      await transporter.sendMail(userMailOptions);
+      await transporter.sendMail(adminMailOptions);
+      fs.unlinkSync(receiptPath);
+
+      res.status(200).json({ message: 'Payment verified & receipt emailed' });
+    } catch (error) {
+      console.error('Receipt email error:', error);
+      res.status(500).json({ message: 'Payment verified but email failed' });
+    }
+  });
+
+  writeStream.on('error', (error) => {
+    console.error('PDF generation error:', error);
+    res.status(500).json({ message: 'Failed to generate receipt' });
+  });
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running at ${PORT}`);
+  console.log(`🚀 Server running at ${PORT}`);
 });
