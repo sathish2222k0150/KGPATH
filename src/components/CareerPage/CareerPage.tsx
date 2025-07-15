@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import AOS from 'aos';
+import 'aos/dist/aos.css'; 
 import { 
   ChevronDown, 
   MapPin, 
@@ -6,16 +8,13 @@ import {
   Users, 
   Award, 
   BookOpen, 
-  Heart, 
-  Coffee, 
-  Plane, 
-  GraduationCap,
   Mail,
   Star,
   CheckCircle,
   ArrowRight
 } from 'lucide-react';
 import career from '../../assets/career.png';
+import Benefit from './Benefits';
 
 interface FormData {
   name: string;
@@ -37,12 +36,6 @@ interface Job {
   requirements: string[];
 }
 
-interface Benefit {
-  icon: JSX.Element;
-  title: string;
-  description: string;
-}
-
 interface Testimonial {
   name: string;
   role: string;
@@ -59,6 +52,7 @@ const CareerPage = () => {
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
@@ -69,79 +63,64 @@ const CareerPage = () => {
     coverLetter: ''
   });
 
-  // Animation on scroll
+  // Initialize AOS when component mounts
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    document.querySelectorAll('.animate-on-scroll').forEach((el) => {
-      observer.observe(el);
+    AOS.init({
+      duration: 800,
+      easing: 'ease-in-out',
+      once: true,
+      mirror: false
     });
-
-    return () => observer.disconnect();
   }, []);
 
+  // Refresh AOS when route changes
+  useEffect(() => {
+    AOS.refresh();
+  });
 
   const jobs: Job[] = [
     {
-    id: 1,
-    title: "Full Stack Trainer",
-    location: "Coimbatore, TN",
-    type: "Full-time",
-    department: "Training & Development",
-    description: "Looking for an experienced Full Stack Developer to mentor students in modern web technologies through hands-on training and real-time projects.",
-    requirements: [
-      "Strong knowledge of HTML, CSS, JavaScript, React, Node.js",
-      "Minimum 3+ years of development experience",
-      "Prior teaching or mentoring experience preferred",
-      "Good communication and presentation skills"
-    ]
-  },
-  {
-    id: 2,
-    title: "AI & ML Trainer",
-    location: "Chennai, TN",
-    type: "Full-time",
-    department: "Training & Development",
-    description: "Deliver engaging sessions on Artificial Intelligence and Machine Learning to help students build real-world AI solutions.",
-    requirements: [
-      "Expertise in Python, Machine Learning algorithms, and AI frameworks",
-      "Experience with tools like TensorFlow, Keras, or PyTorch",
-      "2+ years of teaching or industry experience",
-      "Strong understanding of statistics and data analysis"
-    ]
-  },
-  {
-    id: 3,
-    title: "Cloud Architect Trainer",
-    location: "Remote",
-    type: "Part-time / Contract",
-    department: "Training & Development",
-    description: "Seeking a Cloud Architect with strong industry expertise to train students in cloud infrastructure, services, and best practices.",
-    requirements: [
-      "Hands-on experience with AWS, Azure, or Google Cloud",
-      "Cloud certifications preferred (e.g., AWS Solutions Architect)",
-      "Strong knowledge of DevOps tools and CI/CD pipelines",
-      "Effective teaching and curriculum-building skills"
-    ]
-  }
-  ];
-
-  const benefits: Benefit[] = [
-    { icon: <Heart className="w-6 h-6" />, title: "Health Insurance", description: "Comprehensive medical, dental, and vision coverage" },
-    { icon: <Coffee className="w-6 h-6" />, title: "Flexible Hours", description: "Work-life balance with flexible scheduling" },
-    { icon: <Plane className="w-6 h-6" />, title: "Paid Time Off", description: "25 days PTO plus holidays and sick leave" },
-    { icon: <GraduationCap className="w-6 h-6" />, title: "Learning Budget", description: "$2000 annual budget for courses and conferences" },
-    { icon: <Users className="w-6 h-6" />, title: "Team Events", description: "Regular team building and company outings" },
-    { icon: <Award className="w-6 h-6" />, title: "Performance Bonus", description: "Quarterly bonuses based on individual and team performance" }
+      id: 1,
+      title: "Full Stack Trainer",
+      location: "Coimbatore, TN",
+      type: "Full-time",
+      department: "Training & Development",
+      description: "Looking for an experienced Full Stack Developer to mentor students in modern web technologies through hands-on training and real-time projects.",
+      requirements: [
+        "Strong knowledge of HTML, CSS, JavaScript, React, Node.js",
+        "Minimum 3+ years of development experience",
+        "Prior teaching or mentoring experience preferred",
+        "Good communication and presentation skills"
+      ]
+    },
+    {
+      id: 2,
+      title: "AI & ML Trainer",
+      location: "Chennai, TN",
+      type: "Full-time",
+      department: "Training & Development",
+      description: "Deliver engaging sessions on Artificial Intelligence and Machine Learning to help students build real-world AI solutions.",
+      requirements: [
+        "Expertise in Python, Machine Learning algorithms, and AI frameworks",
+        "Experience with tools like TensorFlow, Keras, or PyTorch",
+        "2+ years of teaching or industry experience",
+        "Strong understanding of statistics and data analysis"
+      ]
+    },
+    {
+      id: 3,
+      title: "Cloud Architect Trainer",
+      location: "Remote",
+      type: "Part-time / Contract",
+      department: "Training & Development",
+      description: "Seeking a Cloud Architect with strong industry expertise to train students in cloud infrastructure, services, and best practices.",
+      requirements: [
+        "Hands-on experience with AWS, Azure, or Google Cloud",
+        "Cloud certifications preferred (e.g., AWS Solutions Architect)",
+        "Strong knowledge of DevOps tools and CI/CD pipelines",
+        "Effective teaching and curriculum-building skills"
+      ]
+    }
   ];
 
   const testimonials: Testimonial[] = [
@@ -184,41 +163,61 @@ const CareerPage = () => {
     }
   ];
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Application submitted:', formData);
-    alert('Application submitted successfully!');
-    setShowApplicationForm(false);
-    setFormData({ 
-      name: '', 
-      email: '', 
-      phone: '', 
-      position: '', 
-      experience: '', 
-      resume: null, 
-      coverLetter: '' 
+   const handleFormSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!formData.resume) {
+    alert('Please upload your resume.');
+    return;
+  }
+
+  setIsSubmitting(true); // start loader
+
+  try {
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('email', formData.email);
+    data.append('phone', formData.phone);
+    data.append('position', formData.position);
+    data.append('experience', formData.experience);
+    data.append('coverLetter', formData.coverLetter);
+    data.append('resume', formData.resume);
+
+    const res = await fetch('http://localhost:5000/api/job-apply', {
+      method: 'POST',
+      body: data,
     });
-  };
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert(result.message || 'Application submitted!');
+      setShowApplicationForm(false);
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        position: '',
+        experience: '',
+        resume: null,
+        coverLetter: ''
+      });
+    } else {
+      alert(result.message || 'Failed to submit application');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Something went wrong.');
+  } finally {
+    setIsSubmitting(false); // stop loader
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-white">
       {/* Custom CSS for animations */}
       <style>{`
-        .animate-fade-in-up {
-          animation: fadeInUp 0.8s ease-out forwards;
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
         .bg-gradient-primary {
           background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
         }
@@ -254,83 +253,79 @@ const CareerPage = () => {
           50% { transform: scale(1.05); }
         }
       `}</style>
-    {/* Hero Section */}
-     <section className="relative bg-gradient-to-br from-teal-50 to-blue-50 py-32 min-h-screen">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="grid lg:grid-cols-2 gap-12 h-full items-center">
 
-      {/* Left Column */}
-      <div className="flex flex-col justify-between h-full space-y-10 animate-on-scroll">
-        <div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Build Your Future <span className="bg-clip-text text-teal-600">With Us</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Join a team of innovators, learners, and creators. Explore exciting career opportunities and grow with us in a supportive, cutting-edge environment.
-          </p> {/* ⬅️ Why Join Us box (moved here) */}
-       <div className="bg-gradient-to-br from-teal-50 p-6 rounded-2xl hover:shadow-lg -ml-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4 -mt-5">Why Join Us?</h3>
-              <ul className="space-y-3 text-gray-600">
-                {[
-                  "Collaborative and inclusive culture",
-                  "Growth through learning programs",
-                  "Flexible & hybrid work model",
-                  "Rewards for high performance",
-                ].map((item, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <svg
-                      className="w-5 h-5 text-green-600 mt-1 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="ml-3">{item}</span>
-                  </li>
-                ))}
-              </ul>
+      {/* Hero Section */}
+      <section className="relative bg-white py-32 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 h-full items-center">
+            {/* Left Column */}
+            <div className="flex flex-col justify-between h-full space-y-10" data-aos="fade-right">
+              <div>
+                <h1 className="text-5xl font-bold text-gray-900 mb-6">
+                  Build Your Future<br></br> <span className="bg-clip-text text-teal-600">With Us</span>
+                </h1>
+                <p className="text-xl text-gray-600 mb-8">
+                  Join a team of innovators, learners, and creators. Explore exciting career opportunities and grow with us in a supportive, cutting-edge environment.
+                </p>
+                <div className="bg-gradient-to-br from-teal-50 p-6 rounded-2xl hover:shadow-lg -ml-6">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-4 -mt-5">Why Join Us?</h3>
+                  <ul className="space-y-3 text-gray-600">
+                    {[
+                      "Collaborative and inclusive culture",
+                      "Growth through learning programs",
+                      "Flexible & hybrid work model",
+                      "Rewards for high performance",
+                    ].map((item, idx) => (
+                      <li key={idx} className="flex items-start">
+                        <svg
+                          className="w-5 h-5 text-green-600 mt-1 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="ml-3">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-9 mt-6">
+                  <button 
+                    onClick={() => document.getElementById('jobs')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="bg-gradient-primary text-white px-8 py-3 rounded-lg text-lg font-semibold hover:shadow-xl transition-all duration-300 pulse-button"
+                  >
+                    View Open Positions
+                  </button>
+                  <button 
+                    onClick={() => setShowApplicationForm(true)}
+                    className="border-2 border-orange-600 text-orange-600 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-orange-600 hover:text-white transition-all duration-300"
+                  >
+                    Apply Now
+                  </button>
+                </div>
+              </div>  
             </div>
-          <div className="flex flex-col sm:flex-row gap-9 mt-6">
-            <button 
-              onClick={() => document.getElementById('jobs')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-gradient-primary text-white px-8 py-4 rounded-lg text-lg font-semibold hover:shadow-xl transition-all duration-300 pulse-button"
-            >
-              View Open Positions
-            </button>
-            <button 
-              onClick={() => setShowApplicationForm(true)}
-              className="border-2 border-orange-600 text-orange-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 hover:text-white transition-all duration-300"
-            >
-              Apply Now
-            </button>
+
+            {/* Right Column */}
+            <div className="flex flex-col justify-between h-full space-y-10" data-aos="fade-left">
+              <div className="w-full">
+                <img 
+                  src={career}
+                  alt="Team collaboration" 
+                  className="rounded-2xl shadow-2xl w-full object-cover mt-1"
+                />
+              </div>
+            </div>
           </div>
-        </div>  
-      </div>
-
-      {/* Right Column */}
-      <div className="flex flex-col justify-between h-full space-y-10 animate-on-scroll mt-19">
-        <div className="w-full">
-          <img 
-            src={career}
-            alt="Team collaboration" 
-            className="rounded-2xl shadow-2xl w-full object-cover mt-1"
-          />
         </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-
-
-      
+      </section>
 
       {/* Why Work With Us */}
       <section className="py-20 bg-gray-50" id="culture">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
+          <div className="text-center mb-16" data-aos="fade-up">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Work With Us</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               We're building the future of education technology with a team-first culture that values innovation, learning, and personal growth.
@@ -338,7 +333,7 @@ const CareerPage = () => {
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center animate-on-scroll">
+            <div className="text-center" data-aos="fade-up" data-aos-delay="100">
               <div className="bg-gradient-primary p-6 rounded-2xl w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                 <Users className="w-10 h-10 text-white" />
               </div>
@@ -346,7 +341,7 @@ const CareerPage = () => {
               <p className="text-gray-600">Work with passionate professionals who support each other's growth and celebrate shared successes.</p>
             </div>
             
-            <div className="text-center animate-on-scroll">
+            <div className="text-center" data-aos="fade-up" data-aos-delay="200">
               <div className="bg-gradient-secondary p-6 rounded-2xl w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                 <BookOpen className="w-10 h-10 text-white" />
               </div>
@@ -354,7 +349,7 @@ const CareerPage = () => {
               <p className="text-gray-600">Stay ahead with cutting-edge technologies and generous learning budgets for conferences and courses.</p>
             </div>
             
-            <div className="text-center animate-on-scroll">
+            <div className="text-center" data-aos="fade-up" data-aos-delay="300">
               <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-6 rounded-2xl w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                 <Award className="w-10 h-10 text-white" />
               </div>
@@ -364,19 +359,19 @@ const CareerPage = () => {
           </div>
           
           <div className="mt-16 grid md:grid-cols-4 gap-8 text-center">
-            <div className="animate-on-scroll">
+            <div data-aos="fade-up" data-aos-delay="100">
               <div className="text-4xl font-bold text-teal-600 mb-2">20+</div>
               <div className="text-gray-600">Team Members</div>
             </div>
-            <div className="animate-on-scroll">
+            <div data-aos="fade-up" data-aos-delay="200">
               <div className="text-4xl font-bold text-orange-600 mb-2">100%</div>
               <div className="text-gray-600">Employee Satisfaction</div>
             </div>
-            <div className="animate-on-scroll">
+            <div data-aos="fade-up" data-aos-delay="300">
               <div className="text-4xl font-bold text-teal-600 mb-2">5.0★</div>
               <div className="text-gray-600">Glassdoor Rating</div>
             </div>
-            <div className="animate-on-scroll">
+            <div data-aos="fade-up" data-aos-delay="400">
               <div className="text-4xl font-bold text-orange-600 mb-2">2+</div>
               <div className="text-gray-600">Branches</div>
             </div>
@@ -387,7 +382,7 @@ const CareerPage = () => {
       {/* Open Positions */}
       <section className="py-20 bg-white" id="jobs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
+          <div className="text-center mb-16" data-aos="fade-up">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Open Positions</h2>
             <p className="text-xl text-gray-600">Join our team and help us shape the future of education technology</p>
           </div>
@@ -396,8 +391,9 @@ const CareerPage = () => {
             {jobs.map((job, index) => (
               <div 
                 key={job.id} 
-                className={`job-card bg-white rounded-xl p-6 border shadow-sm hover:shadow-lg animate-on-scroll`}
-                style={{ animationDelay: `${index * 0.1}s` }}
+                className={`job-card bg-white rounded-xl p-6 border shadow-sm hover:shadow-lg`}
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex-1">
@@ -464,35 +460,12 @@ const CareerPage = () => {
       </section>
 
       {/* Benefits & Perks */}
-      <section className="py-20 bg-gray-50" id="benefits">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Benefits & Perks</h2>
-            <p className="text-xl text-gray-600">We invest in our people with comprehensive benefits and meaningful perks</p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => (
-              <div 
-                key={index} 
-                className={`bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 animate-on-scroll`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="bg-gradient-primary p-4 rounded-xl w-fit mb-6 text-white">
-                  {benefit.icon}
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{benefit.title}</h3>
-                <p className="text-gray-600">{benefit.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Benefit />
 
       {/* Employee Testimonials */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
+          <div className="text-center mb-16" data-aos="fade-up">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Team Says</h2>
             <p className="text-xl text-gray-600">Hear from our employees about their experience working with us</p>
           </div>
@@ -501,8 +474,9 @@ const CareerPage = () => {
             {testimonials.map((testimonial, index) => (
               <div 
                 key={index} 
-                className={`bg-gray-50 p-8 rounded-2xl animate-on-scroll`}
-                style={{ animationDelay: `${index * 0.2}s` }}
+                className="bg-gray-50 p-8 rounded-2xl"
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
               >
                 <div className="flex items-center mb-6">
                   <img 
@@ -530,7 +504,7 @@ const CareerPage = () => {
       {/* Application Process */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
+          <div className="text-center mb-16" data-aos="fade-up">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Application Process</h2>
             <p className="text-xl text-gray-600">Our streamlined hiring process designed to find the perfect fit</p>
           </div>
@@ -542,7 +516,12 @@ const CareerPage = () => {
               { step: 3, title: "Interview", description: "Technical and cultural fit interviews" },
               { step: 4, title: "Offer", description: "Receive offer and join our team!" }
             ].map((item, index) => (
-              <div key={index} className={`text-center animate-on-scroll`} style={{ animationDelay: `${index * 0.2}s` }}>
+              <div 
+                key={index} 
+                className="text-center" 
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
+              >
                 <div className="bg-gradient-primary w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
                   {item.step}
                 </div>
@@ -557,14 +536,19 @@ const CareerPage = () => {
       {/* FAQs */}
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
+          <div className="text-center mb-16" data-aos="fade-up">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
             <p className="text-xl text-gray-600">Find answers to common questions about working with us</p>
           </div>
           
           <div className="space-y-4">
             {faqs.map((faq, index) => (
-              <div key={index} className={`border border-gray-200 rounded-lg animate-on-scroll`} style={{ animationDelay: `${index * 0.1}s` }}>
+              <div 
+                key={index} 
+                className="border border-gray-200 rounded-lg"
+                data-aos="fade-up"
+                data-aos-delay={index * 50}
+              >
                 <button
                   onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
                   className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -584,9 +568,9 @@ const CareerPage = () => {
       </section>
 
       {/* Call to Action */}
-      <section className="py-20 bg-gradient-to-br from-teal-50 to-blue-50" id="contact">
+      <section className="py-20 bg-white" id="contact">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="animate-on-scroll">
+          <div data-aos="fade-up">
             <h2 className="text-4xl font-bold text-gray-900 mb-6">Ready to Join Our Team?</h2>
             <p className="text-xl text-gray-600 mb-8">
               Take the next step in your career journey. We're excited to meet talented individuals who share our passion for innovation and learning.
@@ -594,13 +578,13 @@ const CareerPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
                 onClick={() => setShowApplicationForm(true)}
-                className="bg-gradient-primary text-white px-8 py-4 rounded-lg text-lg font-semibold hover:shadow-xl transition-all duration-300 pulse-button"
+                className="bg-gradient-primary text-white px-8 py-3 rounded-lg text-lg font-semibold hover:shadow-xl transition-all duration-300 pulse-button"
               >
                 Apply Now
               </button>
               <a 
                 href="mailto:careers@techedu.com"
-                className="border-2 border-orange-600 text-orange-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 hover:text-white transition-all duration-300 flex items-center justify-center"
+                className="border-2 border-orange-600 text-orange-600 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-orange-600 hover:text-white transition-all duration-300 flex items-center justify-center"
               >
                 <Mail className="w-5 h-5 mr-2" />
                 Contact HR
@@ -610,12 +594,13 @@ const CareerPage = () => {
         </div>
       </section>
 
-      
-
       {/* Application Form Modal */}
       {showApplicationForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div 
+            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            data-aos="zoom-in"
+          >
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Apply for Position</h3>
@@ -727,20 +712,26 @@ const CareerPage = () => {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-gradient-primary text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center"
-                  >
+                 <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 bg-gradient-primary text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center"
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8z"></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
                     Submit Application
                     <ArrowRight className="w-5 h-5 ml-2" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowApplicationForm(false)}
-                    className="flex-1 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                  </>
+                )}
+              </button>
                 </div>
               </form>
             </div>
