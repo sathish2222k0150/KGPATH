@@ -8,6 +8,9 @@ import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
+
+const upload = multer({ dest: 'uploads/' });
 
 dotenv.config();
 
@@ -221,6 +224,131 @@ app.post('/api/verify-payment', async (req, res) => {
     res.status(500).json({ message: 'Failed to generate receipt' });
   });
 });
+
+
+
+app.post('/api/job-apply', upload.single('resume'), async (req, res) => {
+  const { name, email, phone, position, experience, coverLetter } = req.body;
+  const resume = req.file;
+
+  if (!name || !email || !position || !resume) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,   // your email (e.g., careers@yourcompany.com)
+        pass: process.env.EMAIL_PASS,   // app password
+      },
+    });
+
+    // 1️⃣ Email to HR / you
+    const hrMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: 'sathish2222k0150@gmail.com',
+      subject: `New Job Application: ${position}`,
+      html: `
+        <h2>New Job Application Received</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
+        <p><strong>Position:</strong> ${position}</p>
+        <p><strong>Experience:</strong> ${experience || 'N/A'}</p>
+        <p><strong>Cover Letter:</strong><br/> ${coverLetter || 'N/A'}</p>
+      `,
+      attachments: [
+        {
+          filename: resume.originalname,
+          path: resume.path,
+        },
+      ],
+    };
+
+    await transporter.sendMail(hrMailOptions);
+
+    // 2️⃣ Confirmation email to applicant
+    const confirmationMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: `Thank you for applying for ${position}`,
+      html: `
+        <p>Hi ${name},</p>
+        <p>Thank you for your application for the <strong>${position}</strong> role.</p>
+        <p>We have received your details and will review them shortly. If your profile matches our requirements, our team will reach out to you for the next steps.</p>
+        <p>Best regards,<br/>HR Team</p>
+      `,
+    };
+
+    await transporter.sendMail(confirmationMailOptions);
+
+    // ✅ Delete uploaded file after sending both emails
+    fs.unlinkSync(resume.path);
+
+    res.status(200).json({ message: 'Application submitted successfully!' });
+  } catch (error) {
+    console.error('Job application email error:', error);
+    res.status(500).json({ message: 'Failed to send application email' });
+  }
+});
+
+
+app.post('/api/contact', async (req, res) => {
+  const { name, email, phone, course, message } = req.body;
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: 'Please fill in all required fields' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Email to admin
+    const adminMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: 'sathish2222k0150@gmail.com',  // change to your admin email if needed
+      subject: 'New Contact Form Submission',
+      html: `
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone Number:</strong> ${phone || 'N/A'}</p>
+        <p><strong>Course Interest:</strong> ${course || 'N/A'}</p>
+        <p><strong>Message:</strong><br/> ${message}</p>
+      `,
+    };
+
+    await transporter.sendMail(adminMailOptions);
+
+    // Optional: Confirmation email to user
+    const userMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Thank you for contacting us!',
+      html: `
+        <p>Hi ${name},</p>
+        <p>Thank you for reaching out! We have received your message and our team will get back to you shortly.</p>
+        <p>Best regards,<br/>KG Path Team</p>
+      `,
+    };
+
+    await transporter.sendMail(userMailOptions);
+
+    res.status(200).json({ message: 'Your message was sent successfully!' });
+  } catch (error) {
+    console.error('Contact form email error:', error);
+    res.status(500).json({ message: 'Failed to send your message' });
+  }
+});
+
+
 
 // Start server
 app.listen(PORT, () => {
